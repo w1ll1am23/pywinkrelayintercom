@@ -1,3 +1,11 @@
 from winkrelayintercom import WinkRelayIntercomBroadcaster
-broadcaster = WinkRelayIntercomBroadcaster("192.168.1.255", convert=True, audio_boost=10)
-broadcaster.send_audio("brian.mp3")
+
+# Takes an MP3, converts and boosts the audio sends to broadcaster as raw data
+broadcaster = WinkRelayIntercomBroadcaster("192.168.1.255", convert=True, audio_boost=15)
+with open("somemp3.mp3", "rb") as f:
+    data = f.read()
+    broadcaster.send_audio(data)
+
+# Takes a PCM raw audio file and sends it as a file path. No audio boost.
+broadcaster = WinkRelayIntercomBroadcaster("192.168.1.255", convert=False, audio_boost=None)
+broadcaster.send_audio("rawpcm.pcm")
