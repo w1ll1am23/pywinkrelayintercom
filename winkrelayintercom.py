@@ -65,11 +65,15 @@ class WinkRelayIntercomBroadcaster:
             _temp_input_audio_file = tempfile.NamedTemporaryFile()
             _temp_input_audio_file.write(data)
         else:
-            _temp_input_audio_file = open(filename, "rb")
+            try:
+                _temp_input_audio_file = open(filename, "rb")
+            except ValueError:
+                _LOGGER.error("Invalid file name. Are you trying to send in raw data in the filename field?")
             _temp_data = _temp_input_audio_file.read()
             if len(_temp_data) == 0:
                 _LOGGER.error("Empty file provided.")
                 return
+            _temp_input_audio_file.seek(0)
         _temp_output_audio_file = tempfile.NamedTemporaryFile()
 
         if self.convert:
