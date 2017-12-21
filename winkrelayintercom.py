@@ -4,6 +4,7 @@ import tempfile
 import logging
 
 from pydub import AudioSegment, exceptions
+from upnp import UPNPResponderThread
 
 UDP_PORT = 10444
 MESSAGE_START = "\x7f"
@@ -31,6 +32,12 @@ class WinkRelayIntercomBroadcaster:
         self.socket = socket.socket(socket.AF_INET,
                                     socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        self.ssdpResponder = UPNPResponderThread("192.168.5.5", "8888")
+        self.ssdpResponder.start()
+
+    def stop(self):
+        """Stop the ssdpResponder."""
+        self.ssdpResponder.stop()
 
     def set_boost(self, audio_boost):
         """
