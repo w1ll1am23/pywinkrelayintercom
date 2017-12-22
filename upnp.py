@@ -57,10 +57,7 @@ EXT:
             socket.inet_aton("239.255.255.250") +
             socket.inet_aton(self.host_ip_addr))
 
-        # if self.upnp_bind_multicast:
-        #     ssdp_socket.bind(("", 1900))
-        # else:
-        ssdp_socket.bind((self.host_ip_addr, 1900))
+        ssdp_socket.bind(("", 1900))
 
         while True:
             if self._interrupted:
@@ -88,14 +85,16 @@ EXT:
                 # because the data object has not been initialized
                 continue
 
-            if "M-SEARCH" in data.decode('utf-8', errors='ignore'):
+            _data = data.decode('utf-8', errors='ignore')
+            if "M-SEARCH" in _data and "ST: urn:wink-com:device:relay:2" in _data:
                 resp_socket = socket.socket(
                     socket.AF_INET, socket.SOCK_DGRAM)
 
                 resp_socket.sendto(self.upnp_response, addr)
                 resp_socket.close()
+                self._stop()
 
-    def stop(self):
+    def _stop(self):
         """Stop the server."""
         # Request for server
         self._interrupted = True

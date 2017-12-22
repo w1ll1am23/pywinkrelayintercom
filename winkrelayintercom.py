@@ -2,6 +2,7 @@ import socket
 import time
 import tempfile
 import logging
+import ipaddress
 
 from pydub import AudioSegment, exceptions
 from upnp import UPNPResponderThread
@@ -19,25 +20,40 @@ class WinkRelayIntercomBroadcaster:
     Audio broadcaster for Wink Relay.
     """
 
-    def __init__(self, bcast_addr, convert=False, audio_boost=None):
+    def __init__(self, host_addr, net_mask="255.255.255.0", convert=False, audio_boost=None):
         """
 
-        :param bcast_addr: The broadcast address for your network.
+        :param host_addr: The host address of the system running this code.
+        :param net_mask: The net_mask of the network. Defaults to the most common 255.255.255.0.
         :param convert: Should the audio files provided be converted?
         :param audio_boost: Should the audio files provided have their audio increased? If so by how much.
         """
-        self.bcast_addr = bcast_addr
+        self.host_addr = host_addr
+        try:
+            _net = ipaddress.IPv4Network(host_addr + "/" + net_mask, False)
+            self.bcast_addr = str(_net.broadcast_address)
+        except ipaddress.NetmaskValueError:
+            _LOGGER.error("An invalid net mask was provided. Setting default.")
+            net_mask = "255.255.255.0"
+            _net = ipaddress.IPv4Network(host_addr + "/" + net_mask, False)
+            self.bcast_addr = str(_net.broadcast_address)
+        self.net_mask = net_mask
         self.convert = convert
         self.audio_boost = audio_boost
         self.socket = socket.socket(socket.AF_INET,
                                     socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self.ssdpResponder = UPNPResponderThread("192.168.5.5", "8888")
-        self.ssdpResponder.start()
+        self.ssdpResponder = UPNPResponderThread(host_addr, "8888")
 
-    def stop(self):
-        """Stop the ssdpResponder."""
-        self.ssdpResponder.stop()
+    def activate_relay_intercom(self):
+        """
+        Start the SSDP responder to activate the Relay's intercom.
+        
+        For users with only one Relay the intercom function isn't enabled unless
+        another Relay is detected on the same network. This will fake another
+        Relay. This only needs done once. (Maybe after a software update as well?) 
+        """
+        self.ssdpResponder.start()
 
     def set_boost(self, audio_boost):
         """
@@ -74,13 +90,14 @@ class WinkRelayIntercomBroadcaster:
         else:
             try:
                 _temp_input_audio_file = open(filename, "rb")
+                _temp_data = _temp_input_audio_file.read()
+                if len(_temp_data) == 0:
+                    _LOGGER.error("Empty file provided.")
+                    return
+                _temp_input_audio_file.seek(0)
             except ValueError:
                 _LOGGER.error("Invalid file name. Are you trying to send in raw data in the filename field?")
-            _temp_data = _temp_input_audio_file.read()
-            if len(_temp_data) == 0:
-                _LOGGER.error("Empty file provided.")
                 return
-            _temp_input_audio_file.seek(0)
         _temp_output_audio_file = tempfile.NamedTemporaryFile()
 
         if self.convert:
@@ -109,8 +126,9 @@ class WinkRelayIntercomBroadcaster:
         # This wakes up the Relay
         self.socket.sendto(bytes(MESSAGE_START, "utf-8"), (self.bcast_addr, UDP_PORT))
         # Send in some null data packets to prime the stream
-        for x in range(0, 10):
+        for x in range(0, 15):
             self.socket.sendto(bytes(NULL_PACKET, "utf-8"), (self.bcast_addr, UDP_PORT))
+        time.sleep(.02)
 
         _packet = _temp_output_audio_file.read(320)
         packet_count = 0
