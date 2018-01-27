@@ -5,7 +5,7 @@ import logging
 import ipaddress
 
 from pydub import AudioSegment, exceptions
-from upnp import UPNPResponderThread
+from pywinkrelayintercom.upnp import UPNPResponderThread
 
 UDP_PORT = 10444
 MESSAGE_START = "\x7f"
