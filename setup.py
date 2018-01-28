@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pywinkrelayintercom',
-    version='0.0.2',
+    version='0.0.3',
     description='Python interface to broadcast audio to Wink Relay intercoms',
     url='https://github.com/w1ll1am23/pywinkrelayintercom',
     author='William Scanlon',
